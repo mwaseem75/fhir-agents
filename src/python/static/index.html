@@ -1,0 +1,1350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FHIR Agents — Clinical Intelligence Platform</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><polygon points='32,4 56,18 56,46 32,60 8,46 8,18' fill='%230b1525' stroke='%2338bdf8' stroke-width='2'/><polyline points='14,32 22,32 25,22 29,42 33,32 38,32 40,26 42,38 44,32 50,32' fill='none' stroke='%2338bdf8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/><circle cx='29' cy='42' r='2.5' fill='%2334d399'/></svg>"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Lato:wght@300;400;700&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#060d18;--bg2:#0b1525;--bg3:#0f1e33;--surface:#132340;--surface2:#172a4c;
+  --border:rgba(56,189,248,0.09);--border2:rgba(56,189,248,0.18);--border3:rgba(56,189,248,0.32);
+  --accent:#38bdf8;--accent2:#0ea5e9;--accent3:#7dd3fc;
+  --adim:rgba(56,189,248,0.08);--adim2:rgba(56,189,248,0.04);
+  --text:#dbeafe;--text2:#7fa8cc;--text3:#3d6080;
+  --emg:#ff6b6b;--warn:#fbbf24;--ok:#34d399;
+  --triage:#38bdf8;--specialist:#a78bfa;--pharmacy:#34d399;
+  --glow:0 0 40px rgba(56,189,248,0.06);
+  --font:'Lato',sans-serif;--display:'Syne',sans-serif;--mono:'JetBrains Mono',monospace;
+  --r:10px;--rs:6px;
+}
+[data-theme="light"]{
+  --bg:#f4f7fb;--bg2:#ffffff;--bg3:#eaf0f8;--surface:#dde8f5;--surface2:#cfdaec;
+  --border:rgba(14,90,140,0.1);--border2:rgba(14,90,140,0.2);--border3:rgba(14,90,140,0.35);
+  --accent:#0369a1;--accent2:#0284c7;--accent3:#0ea5e9;
+  --adim:rgba(3,105,161,0.07);--adim2:rgba(3,105,161,0.03);
+  --text:#0c1a2e;--text2:#2d5577;--text3:#7fa8c8;
+  --emg:#dc2626;--warn:#d97706;--ok:#16a34a;
+  --triage:#0369a1;--specialist:#7c3aed;--pharmacy:#16a34a;
+  --glow:none;
+}
+[data-theme="clinical"]{
+  --bg:#050f0a;--bg2:#081810;--bg3:#0c2216;--surface:#0f2e1e;--surface2:#133825;
+  --border:rgba(52,211,153,0.09);--border2:rgba(52,211,153,0.18);--border3:rgba(52,211,153,0.32);
+  --accent:#34d399;--accent2:#10b981;--accent3:#6ee7b7;
+  --adim:rgba(52,211,153,0.08);--adim2:rgba(52,211,153,0.04);
+  --text:#d1fae5;--text2:#5eab80;--text3:#2d6b48;
+  --emg:#f87171;--warn:#fbbf24;--ok:#34d399;
+  --triage:#34d399;--specialist:#a78bfa;--pharmacy:#38bdf8;
+  --glow:0 0 40px rgba(52,211,153,0.06);
+}
+
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.6;overflow:hidden;}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar{width:3px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+
+/* ── Layout ── */
+.app{display:grid;grid-template-columns:272px 1fr;height:100vh;}
+
+/* ══════════════════════════════════════
+   SIDEBAR
+══════════════════════════════════════ */
+.sidebar{background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;position:relative;}
+.sidebar::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.25;}
+
+/* Brand */
+.brand{padding:18px 16px 14px;border-bottom:1px solid var(--border);}
+.brand-top{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.brand-icon{width:36px;height:36px;background:var(--adim);border:1px solid var(--border2);border-radius:var(--r);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.brand-icon svg{width:18px;height:18px;stroke:var(--accent);fill:none;stroke-width:2;}
+.brand-name{font-family:var(--display);font-size:14px;font-weight:700;color:var(--text);letter-spacing:.3px;}
+.brand-ver{font-family:var(--mono);font-size:9px;color:var(--accent);background:var(--adim);border:1px solid var(--border2);border-radius:20px;padding:1px 7px;width:fit-content;letter-spacing:.5px;}
+
+/* New session button */
+.new-btn{width:100%;padding:8px 12px;background:var(--adim);border:1px solid var(--border2);border-radius:var(--r);color:var(--accent);font-family:var(--font);font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:7px;transition:all .15s;letter-spacing:.3px;}
+.new-btn:hover{background:rgba(56,189,248,.14);border-color:var(--border3);}
+.new-btn svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2.5;}
+
+/* Nav links */
+.nav-links{display:flex;flex-direction:column;gap:2px;padding:10px 8px 0;}
+.nav-link{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:var(--rs);color:var(--text2);font-size:12px;font-weight:600;text-decoration:none;border:1px solid transparent;transition:all .15s;letter-spacing:.2px;}
+.nav-link:hover{background:var(--adim);color:var(--text);}
+.nav-link.active{background:var(--adim);border-color:var(--border2);color:var(--accent);}
+.nav-link svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;flex-shrink:0;}
+.nav-link .nl-badge{margin-left:auto;font-family:var(--mono);font-size:9px;padding:1px 6px;border-radius:20px;background:var(--bg3);border:1px solid var(--border);}
+
+/* Section label */
+.sec-lbl{padding:12px 16px 5px;font-family:var(--mono);font-size:9px;font-weight:500;color:var(--text3);letter-spacing:1.2px;text-transform:uppercase;}
+
+/* Agent roster */
+.roster{padding:0 8px;display:flex;flex-direction:column;gap:2px;}
+.a-row{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--rs);border:1px solid transparent;transition:all .2s;cursor:default;}
+.a-row.on{background:var(--bg3);border-color:var(--border);}
+.a-pip{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.a-pip.triage{background:var(--triage);}
+.a-pip.specialist{background:var(--specialist);}
+.a-pip.pharmacy{background:var(--pharmacy);}
+.a-pip.pulse{animation:pip 1.1s infinite;}
+@keyframes pip{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(1.6)}}
+.a-info{flex:1;min-width:0;}
+.a-name{font-size:12px;font-weight:700;color:var(--text2);letter-spacing:.2px;}
+.a-name.on{color:var(--text);}
+.a-desc{font-size:10px;color:var(--text3);font-family:var(--mono);}
+.a-cnt{font-family:var(--mono);font-size:10px;color:var(--text3);background:var(--bg3);border:1px solid var(--border);padding:1px 6px;border-radius:10px;flex-shrink:0;}
+
+/* Patient panel */
+.patient-scroll{flex:1;overflow-y:auto;padding:0 8px;}
+.pt-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:12px;margin-bottom:6px;}
+.pt-card.gone{display:none;}
+.pt-head{display:flex;align-items:center;gap:9px;margin-bottom:8px;}
+.pt-av{width:32px;height:32px;border-radius:8px;background:var(--adim);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-size:13px;font-weight:800;color:var(--accent);flex-shrink:0;}
+.pt-name{font-size:12px;font-weight:700;color:var(--text);}
+.pt-id{font-family:var(--mono);font-size:10px;color:var(--text3);}
+.pt-tags{display:flex;flex-wrap:wrap;gap:3px;}
+.ptag{font-size:9px;padding:2px 7px;border-radius:20px;font-weight:700;letter-spacing:.3px;}
+.ptag-c{background:rgba(56,189,248,.08);color:var(--triage);border:1px solid rgba(56,189,248,.2);}
+.ptag-a{background:rgba(255,107,107,.08);color:var(--emg);border:1px solid rgba(255,107,107,.2);}
+.ptag-m{background:rgba(52,211,153,.08);color:var(--pharmacy);border:1px solid rgba(52,211,153,.2);}
+
+/* Stats */
+.stats{display:none;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:6px;}
+.stat{background:var(--bg3);border:1px solid var(--border);border-radius:var(--rs);padding:9px 10px;}
+.sv{font-family:var(--display);font-size:18px;font-weight:800;color:var(--text);}
+.sl{font-size:9px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.6px;}
+
+/* Urgency */
+.urg{display:flex;align-items:center;gap:7px;padding:7px 10px;border-radius:var(--rs);font-size:11px;font-weight:700;margin-bottom:6px;letter-spacing:.3px;}
+.urg.gone{display:none;}
+.urg.emg{background:rgba(255,107,107,.07);color:var(--emg);border:1px solid rgba(255,107,107,.2);}
+.urg.wrn{background:rgba(251,191,36,.07);color:var(--warn);border:1px solid rgba(251,191,36,.2);}
+.urg.ok{background:rgba(52,211,153,.07);color:var(--ok);border:1px solid rgba(52,211,153,.2);}
+.urg-dot{width:6px;height:6px;border-radius:50%;background:currentColor;animation:udot 1.4s infinite;flex-shrink:0;}
+@keyframes udot{0%,100%{opacity:1}50%{opacity:.2}}
+
+/* FHIR log */
+.fhir-log{margin-bottom:6px;}
+.fhir-log.gone{display:none;}
+.fl-title{font-family:var(--mono);font-size:9px;font-weight:500;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;padding:0 2px;}
+.fl-items{max-height:66px;overflow-y:auto;display:flex;flex-direction:column;gap:2px;}
+.fl-item{font-size:10px;color:var(--ok);font-family:var(--mono);display:flex;align-items:center;gap:5px;}
+.fl-item::before{content:'✓';font-size:9px;}
+
+/* Sidebar footer */
+.sb-foot{padding:10px 16px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.fhir-st{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--text3);}
+.fhir-st-dot{width:5px;height:5px;border-radius:50%;background:var(--ok);}
+
+/* ══════════════════════════════════════
+   CHAT AREA
+══════════════════════════════════════ */
+.chat{display:flex;flex-direction:column;background:var(--bg);overflow:hidden;position:relative;}
+
+/* Subtle grid background */
+.chat::before{content:'';position:absolute;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:40px 40px;opacity:.3;pointer-events:none;}
+
+/* Chat header */
+.chat-hdr{padding:12px 22px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg2);position:relative;z-index:2;gap:12px;flex-shrink:0;overflow:visible;}
+.chat-hdr::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.12;}
+.hdr-left{display:flex;align-items:center;gap:14px;min-width:0;overflow:visible;}
+.hdr-title{font-family:var(--display);font-size:16px;font-weight:700;color:var(--text);letter-spacing:-.2px;white-space:nowrap;overflow:visible;padding-bottom:2px;}
+.hdr-sub{font-family:var(--mono);font-size:10px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.agent-badge{display:flex;align-items:center;gap:6px;padding:4px 11px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid;transition:all .3s;letter-spacing:.3px;flex-shrink:0;}
+.agent-badge.triage{background:rgba(56,189,248,.08);color:var(--triage);border-color:rgba(56,189,248,.2);}
+.agent-badge.specialist{background:rgba(167,139,250,.08);color:var(--specialist);border-color:rgba(167,139,250,.2);}
+.agent-badge.pharmacy{background:rgba(52,211,153,.08);color:var(--pharmacy);border-color:rgba(52,211,153,.2);}
+.agent-badge svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2;}
+.hdr-right{display:flex;align-items:center;gap:7px;flex-shrink:0;}
+.hdr-btn{display:flex;align-items:center;gap:5px;padding:5px 11px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rs);color:var(--text2);font-size:11px;font-weight:600;font-family:var(--font);text-decoration:none;cursor:pointer;transition:all .15s;white-space:nowrap;letter-spacing:.2px;}
+.hdr-btn:hover{border-color:var(--border2);color:var(--text);background:var(--surface);}
+.hdr-btn.active{background:var(--adim);border-color:var(--border2);color:var(--accent);}
+.hdr-btn svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2;}
+.sess-tag{font-family:var(--mono);font-size:10px;color:var(--text3);background:var(--bg3);border:1px solid var(--border);padding:3px 9px;border-radius:var(--rs);}
+
+/* Messages */
+.msgs{flex:1;overflow-y:auto;padding:22px 26px;display:flex;flex-direction:column;gap:14px;position:relative;z-index:1;scroll-behavior:smooth;}
+
+/* Welcome */
+.welcome{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;text-align:center;gap:16px;padding:28px;animation:wfade .5s ease;}
+@keyframes wfade{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.w-icon{width:64px;height:64px;background:var(--adim);border:1px solid var(--border2);border-radius:18px;display:flex;align-items:center;justify-content:center;position:relative;}
+.w-icon::after{content:'';position:absolute;inset:-4px;border-radius:22px;border:1px solid var(--border);animation:iconpulse 3s infinite;}
+@keyframes iconpulse{0%,100%{opacity:.4;transform:scale(1)}50%{opacity:.8;transform:scale(1.03)}}
+.w-icon svg{width:28px;height:28px;stroke:var(--accent);fill:none;stroke-width:1.5;}
+.w-title{font-family:var(--display);font-size:22px;font-weight:800;color:var(--text);letter-spacing:-.5px;padding-bottom:3px;overflow:visible;}
+.w-desc{font-size:13px;color:var(--text2);max-width:400px;line-height:1.7;}
+.w-chips{display:flex;gap:7px;flex-wrap:wrap;justify-content:center;}
+.w-chip{display:flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid;letter-spacing:.3px;}
+.w-chip.triage{background:rgba(56,189,248,.07);color:var(--triage);border-color:rgba(56,189,248,.2);}
+.w-chip.specialist{background:rgba(167,139,250,.07);color:var(--specialist);border-color:rgba(167,139,250,.2);}
+.w-chip.pharmacy{background:rgba(52,211,153,.07);color:var(--pharmacy);border-color:rgba(52,211,153,.2);}
+.w-chip-dot{width:5px;height:5px;border-radius:50%;background:currentColor;}
+.qs-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;width:100%;max-width:540px;}
+.qs{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:11px 13px;cursor:pointer;text-align:left;transition:all .15s;}
+.qs:hover{border-color:var(--border2);background:var(--surface);transform:translateY(-1px);}
+.qs-agent{font-family:var(--mono);font-size:9px;font-weight:500;letter-spacing:.8px;margin-bottom:4px;text-transform:uppercase;}
+.qs-text{font-size:12px;color:var(--text2);line-height:1.4;}
+
+/* Message groups */
+.mg{display:flex;flex-direction:column;gap:4px;animation:mgfade .2s ease;}
+@keyframes mgfade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.ag-lbl{font-family:var(--mono);font-size:10px;font-weight:500;display:flex;align-items:center;gap:5px;padding-left:42px;letter-spacing:.3px;}
+.ag-lbl-pip{width:5px;height:5px;border-radius:50%;}
+.ag-lbl.triage{color:var(--triage);}
+.ag-lbl.specialist{color:var(--specialist);}
+.ag-lbl.pharmacy{color:var(--pharmacy);}
+
+.msg{display:flex;gap:10px;max-width:840px;}
+.msg.user{flex-direction:row-reverse;align-self:flex-end;}
+.av{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid;}
+.av.ai.triage{background:rgba(56,189,248,.1);border-color:rgba(56,189,248,.2);}
+.av.ai.specialist{background:rgba(167,139,250,.1);border-color:rgba(167,139,250,.2);}
+.av.ai.pharmacy{background:rgba(52,211,153,.1);border-color:rgba(52,211,153,.2);}
+.av.user{background:var(--surface2);border-color:var(--border2);}
+.av svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;}
+.av.ai.triage svg{stroke:var(--triage);}
+.av.ai.specialist svg{stroke:var(--specialist);}
+.av.ai.pharmacy svg{stroke:var(--pharmacy);}
+.av.user svg{stroke:var(--text2);}
+
+.bub{padding:11px 15px;border-radius:var(--r);font-size:13.5px;line-height:1.75;max-width:700px;}
+.bub.ai{background:var(--bg3);border:1px solid var(--border);color:var(--text);border-top-left-radius:3px;}
+.bub.ai.triage{border-left:2px solid rgba(56,189,248,.35);}
+.bub.ai.specialist{border-left:2px solid rgba(167,139,250,.35);}
+.bub.ai.pharmacy{border-left:2px solid rgba(52,211,153,.35);}
+.bub.user{background:var(--adim2);border:1px solid var(--border2);color:var(--text);border-top-right-radius:3px;}
+.bub strong{color:var(--accent3);font-weight:700;}
+.bub code{font-family:var(--mono);font-size:11px;background:var(--surface);padding:1px 5px;border-radius:4px;color:var(--accent3);}
+.emg-t{color:var(--emg);font-weight:700;}
+.wrn-t{color:var(--warn);font-weight:700;}
+.ok-t{color:var(--ok);font-weight:700;}
+
+/* Citation block */
+.citation{background:var(--adim2);border:1px solid var(--border);border-left:2px solid var(--accent);border-radius:var(--rs);padding:7px 10px;margin:6px 0;font-size:12px;color:var(--text2);font-style:italic;}
+.citation strong{color:var(--accent3);font-style:normal;}
+
+/* Typing */
+.typing-wrap{display:flex;gap:10px;align-items:flex-start;}
+.typing-inner{display:flex;flex-direction:column;gap:3px;}
+.typing-lbl{font-family:var(--mono);font-size:10px;color:var(--text3);padding-left:2px;}
+.typing-dots{display:flex;gap:4px;padding:12px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);border-top-left-radius:3px;}
+.typing-dots span{width:5px;height:5px;background:var(--text3);border-radius:50%;animation:tdot 1.3s infinite;}
+.typing-dots span:nth-child(2){animation-delay:.2s;}
+.typing-dots span:nth-child(3){animation-delay:.4s;}
+@keyframes tdot{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-5px);background:var(--accent)}}
+
+/* ── Input area ── */
+.input-area{padding:12px 22px 16px;border-top:1px solid var(--border);background:var(--bg2);position:relative;z-index:2;flex-shrink:0;}
+.suggestions{display:flex;gap:5px;margin-bottom:8px;flex-wrap:wrap;}
+.sug{font-size:10px;padding:3px 9px;background:var(--bg3);border:1px solid var(--border);border-radius:20px;color:var(--text2);cursor:pointer;transition:all .15s;font-family:var(--mono);white-space:nowrap;letter-spacing:.2px;}
+.sug:hover{border-color:var(--border2);color:var(--text);}
+.input-wrap{display:flex;gap:9px;align-items:flex-end;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:9px 11px;transition:border-color .15s;}
+.input-wrap:focus-within{border-color:var(--border2);box-shadow:0 0 0 3px var(--adim);}
+.inp{flex:1;background:none;border:none;outline:none;color:var(--text);font-family:var(--font);font-size:13.5px;line-height:1.6;resize:none;max-height:110px;min-height:22px;}
+.inp::placeholder{color:var(--text3);}
+.send{width:32px;height:32px;background:var(--accent);border:none;border-radius:var(--rs);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;}
+.send:hover{background:var(--accent2);transform:scale(1.05);}
+.send:active{transform:scale(.95);}
+/* ── Voice input ── */
+.mic{width:32px;height:32px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rs);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s;}
+.mic:hover{border-color:var(--border2);background:var(--surface);}
+.mic.listening{background:rgba(255,107,107,.1);border-color:rgba(255,107,107,.35);animation:micpulse 1s infinite;}
+.mic.unsupported{opacity:.3;cursor:not-allowed;}
+@keyframes micpulse{0%,100%{box-shadow:0 0 0 0 rgba(255,107,107,.3)}50%{box-shadow:0 0 0 6px rgba(255,107,107,0)}}
+.mic svg{width:14px;height:14px;stroke:var(--text2);fill:none;stroke-width:2;transition:stroke .2s;}
+.mic.listening svg{stroke:var(--emg);}
+.voice-hint{color:var(--emg);animation:vfade .4s ease;}
+@keyframes vfade{from{opacity:0}to{opacity:1}}
+/* ── Language indicator ── */
+.lang-badge{display:flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-family:var(--mono);font-size:10px;color:var(--text3);background:var(--bg3);border:1px solid var(--border);transition:all .4s;}
+.lang-badge.active{color:var(--accent);border-color:var(--border2);background:var(--adim);}
+.lang-dot{width:5px;height:5px;border-radius:50%;background:currentColor;}
+.send:disabled{background:var(--surface);cursor:not-allowed;transform:none;}
+.send svg{width:14px;height:14px;stroke:var(--bg);fill:none;stroke-width:2.5;}
+.inp-foot{display:flex;align-items:center;justify-content:space-between;margin-top:5px;}
+.inp-hint{font-family:var(--mono);font-size:10px;color:var(--text3);}
+.route-hint{font-family:var(--mono);font-size:10px;color:var(--text3);}
+
+/* Toast */
+.toast{position:fixed;bottom:80px;right:18px;background:var(--bg3);border-radius:var(--r);padding:9px 13px;font-size:11px;display:flex;align-items:center;gap:7px;animation:tin .3s ease,tout .3s ease 2.7s forwards;z-index:200;max-width:260px;box-shadow:var(--glow);}
+.toast.fhir{border:1px solid rgba(52,211,153,.3);color:var(--ok);}
+.toast.warn{border:1px solid rgba(251,191,36,.3);color:var(--warn);}
+.toast svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;flex-shrink:0;}
+@keyframes tin{from{transform:translateX(18px);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes tout{to{opacity:0;transform:translateX(12px)}}
+/* ── Patient Picker Modal ── */
+.picker-overlay{position:fixed;inset:0;background:rgba(6,13,24,.8);backdrop-filter:blur(6px);z-index:300;display:none;align-items:center;justify-content:center;padding:20px;}
+.picker-overlay.open{display:flex;animation:pfade .2s ease;}
+@keyframes pfade{from{opacity:0}to{opacity:1}}
+.picker-modal{background:var(--bg2);border:1px solid var(--border2);border-radius:16px;width:100%;max-width:680px;max-height:82vh;display:flex;flex-direction:column;overflow:hidden;animation:pslide .25s ease;}
+@keyframes pslide{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.picker-hdr{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.picker-title{font-family:var(--display);font-size:16px;font-weight:700;color:var(--text);}
+.picker-sub{font-size:11px;color:var(--text3);font-family:var(--mono);margin-top:2px;}
+.picker-close{width:28px;height:28px;border-radius:var(--rs);background:var(--bg3);border:1px solid var(--border);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:14px;transition:all .15s;}
+.picker-close:hover{color:var(--text);border-color:var(--border2);}
+.picker-search{padding:12px 20px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.picker-search-wrap{display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:8px 12px;transition:border-color .15s;}
+.picker-search-wrap:focus-within{border-color:var(--border2);}
+.picker-search-wrap svg{width:13px;height:13px;stroke:var(--text3);fill:none;stroke-width:2;flex-shrink:0;}
+.picker-search-inp{flex:1;background:none;border:none;outline:none;color:var(--text);font-family:var(--font);font-size:13px;}
+.picker-search-inp::placeholder{color:var(--text3);}
+.picker-body{flex:1;overflow-y:auto;padding:12px 16px;}
+.picker-loading{display:flex;align-items:center;justify-content:center;padding:40px;gap:10px;color:var(--text3);font-family:var(--mono);font-size:12px;}
+.picker-spin{width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:pspin .8s linear infinite;}
+@keyframes pspin{to{transform:rotate(360deg)}}
+.picker-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.pcard{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:13px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;}
+.pcard::before{content:'';position:absolute;top:0;left:0;width:3px;bottom:0;background:var(--accent);opacity:0;transition:opacity .2s;}
+.pcard:hover{border-color:var(--border2);transform:translateY(-1px);box-shadow:0 4px 16px rgba(0,0,0,.3);}
+.pcard:hover::before{opacity:1;}
+.pcard-head{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.pcard-av{width:36px;height:36px;border-radius:9px;background:var(--adim);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-size:15px;font-weight:800;color:var(--accent);flex-shrink:0;}
+.pcard-av.f{background:rgba(167,139,250,.1);border-color:rgba(167,139,250,.2);color:#a78bfa;}
+.pcard-av.m{background:rgba(56,189,248,.1);border-color:rgba(56,189,248,.2);color:var(--accent);}
+.pcard-name{font-size:13px;font-weight:700;color:var(--text);line-height:1.2;}
+.pcard-id{font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:1px;}
+.pcard-meta{display:flex;gap:5px;flex-wrap:wrap;}
+.pmeta-tag{font-size:9px;padding:2px 7px;border-radius:20px;font-family:var(--mono);font-weight:600;}
+.pmeta-tag.age{background:var(--adim2);color:var(--text2);border:1px solid var(--border);}
+.pmeta-tag.gender-m{background:rgba(56,189,248,.08);color:var(--accent);border:1px solid rgba(56,189,248,.2);}
+.pmeta-tag.gender-f{background:rgba(167,139,250,.08);color:#a78bfa;border:1px solid rgba(167,139,250,.2);}
+.pcard-hint{font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:6px;padding-top:6px;border-top:1px solid var(--border);line-height:1.4;}
+.picker-empty{text-align:center;padding:40px;color:var(--text3);font-family:var(--mono);font-size:12px;}
+.picker-footer{padding:12px 20px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.picker-count{font-family:var(--mono);font-size:11px;color:var(--text3);}
+.picker-btn{display:flex;align-items:center;gap:5px;padding:6px 13px;background:var(--adim);border:1px solid var(--border2);border-radius:var(--rs);color:var(--accent);font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;}
+.picker-btn:hover{background:rgba(56,189,248,.15);}
+.picker-btn svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ═══════════════ SIDEBAR ═══════════════ -->
+<aside class="sidebar">
+
+  <!-- Brand -->
+  <div class="brand">
+    <div class="brand-top">
+      <div class="brand-icon"><svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
+      <div>
+        <div class="brand-name">FHIR AGENTS</div>
+        <div class="brand-ver">v2.0 · MULTI-AGENT</div>
+      </div>
+    </div>
+    <button class="new-btn" onclick="newSession()">
+      <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      New Triage Session
+    </button>
+  </div>
+
+  <!-- Navigation -->
+  <div class="nav-links">
+    <a href="/" class="nav-link active">
+      <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      Triage Chat
+      <span class="nl-badge" style="color:var(--triage)">Active</span>
+    </a>
+    <a href="/dashboard" class="nav-link">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      Analytics Dashboard
+    </a>
+    <a href="/vitals" class="nav-link">
+      <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Live Vitals Monitor
+      <span class="nl-badge" style="color:var(--ok);border-color:rgba(52,211,153,.2);background:rgba(52,211,153,.06);">Live</span>
+    </a>
+    <a href="/fhir-agent" class="nav-link">
+      <svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="10" ry="4"/><path d="M2 12c0 2.21 4.48 4 10 4s10-1.79 10-4"/><path d="M2 12v5c0 2.21 4.48 4 10 4s10-1.79 10-4v-5"/></svg>
+      FHIR Server Agent
+      <span class="nl-badge" style="color:#6ee7b7;border-color:rgba(110,231,183,.2);background:rgba(110,231,183,.06);">New</span>
+    </a>
+    <a href="/agent-builder" class="nav-link">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+      Agent Builder
+      <span class="nl-badge" style="color:#a78bfa;border-color:rgba(167,139,250,.2);background:rgba(167,139,250,.06);">New</span>
+    </a>
+  </div>
+
+  <!-- Agents -->
+  <div class="sec-lbl">Agent Network</div>
+  <div class="roster">
+    <div class="a-row" id="row-triage">
+      <div class="a-pip triage" id="pip-triage"></div>
+      <div class="a-info">
+        <div class="a-name" id="nm-triage">Triage Agent</div>
+        <div class="a-desc">Symptoms · Urgency · FHIR Writes</div>
+      </div>
+      <div class="a-cnt" id="cnt-triage">0</div>
+    </div>
+    <div class="a-row" id="row-specialist">
+      <div class="a-pip specialist" id="pip-specialist"></div>
+      <div class="a-info">
+        <div class="a-name" id="nm-specialist">Specialist Agent</div>
+        <div class="a-desc">Conditions · Referrals · Analysis</div>
+      </div>
+      <div class="a-cnt" id="cnt-specialist">0</div>
+    </div>
+    <div class="a-row" id="row-pharmacy">
+      <div class="a-pip pharmacy" id="pip-pharmacy"></div>
+      <div class="a-info">
+        <div class="a-name" id="nm-pharmacy">Pharmacy Agent</div>
+        <div class="a-desc">Medications · Interactions · Safety</div>
+      </div>
+      <div class="a-cnt" id="cnt-pharmacy">0</div>
+    </div>
+    <div id="customAgentRoster"></div>
+  </div>
+
+  <!-- Patient context -->
+  <div class="sec-lbl" style="margin-top:4px">Patient Context</div>
+  <div class="patient-scroll">
+
+    <div class="pt-card gone" id="ptCard">
+      <div class="pt-head">
+        <div class="pt-av" id="ptInit">?</div>
+        <div>
+          <div class="pt-name" id="ptName">—</div>
+          <div class="pt-id" id="ptId">—</div>
+        </div>
+      </div>
+      <div class="pt-tags" id="ptTags"></div>
+    </div>
+
+    <div class="stats" id="statsGrid">
+      <div class="stat"><div class="sv" id="svTurn">0</div><div class="sl">Turns</div></div>
+      <div class="stat"><div class="sv" id="svFhir">0</div><div class="sl">FHIR Writes</div></div>
+    </div>
+
+    <div class="urg gone" id="urgBadge">
+      <div class="urg-dot"></div>
+      <span id="urgTxt">—</span>
+    </div>
+
+    <div class="fhir-log gone" id="fhirLog">
+      <div class="fl-title">FHIR Resources Written</div>
+      <div class="fl-items" id="flItems"></div>
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <div class="sb-foot">
+    <div class="fhir-st"><div class="fhir-st-dot"></div>FHIR R4 · :32783</div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--text3);">Groq</div>
+  </div>
+
+</aside>
+
+<!-- ═══════════════ CHAT ═══════════════ -->
+<main class="chat">
+
+  <!-- Header -->
+  <div class="chat-hdr">
+    <div class="hdr-left">
+     
+      <div class="agent-badge triage" id="agBadge">
+        <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        <span id="agTxt">Orchestrator Ready</span>
+      </div>
+    </div>
+    <div class="hdr-right">
+      <div class="sess-tag" id="sessTag">No Session</div>
+      <button class="hdr-btn" onclick="cycleTheme()" id="themeBtn">🌙 Dark</button>
+    </div>
+  </div>
+
+  <!-- Messages -->
+  <div class="msgs" id="msgs">
+    <div class="welcome" id="welcomeScreen">
+      <div style="display:flex;align-items:center;gap:16px;justify-content:center;padding-bottom:4px;overflow:visible;">
+        <div class="w-icon" style="flex-shrink:0;"><svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
+        <div style="text-align:left;">
+          <div class="w-title" style="text-align:left;overflow:visible;padding-bottom:3px;">FHIR AGENTS</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:1px;margin-top:2px;">v2.0 · MULTI-AGENT · FHIR R4</div>
+        </div>
+      </div>
+      <div class="w-desc">A multi-agent clinical intelligence platform. The Orchestrator automatically routes each message to the right specialist agent.</div>
+      <div class="w-chips">
+        <div class="w-chip triage"><div class="w-chip-dot"></div>Triage Agent</div>
+        <div class="w-chip specialist"><div class="w-chip-dot"></div>Specialist Agent</div>
+        <div class="w-chip pharmacy"><div class="w-chip-dot"></div>Pharmacy Agent</div>
+      </div>
+
+      <!-- Prominent nav cards -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;width:100%;max-width:780px;">
+        <a href="/dashboard" style="text-decoration:none;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='var(--border2)';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='var(--border)';this.style.transform='translateY(0)'">
+          <div style="width:36px;height:36px;background:var(--adim);border:1px solid var(--border2);border-radius:9px;display:flex;align-items:center;justify-content:center;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          </div>
+          <div style="font-family:var(--display);font-size:12px;font-weight:700;color:var(--text)">Dashboard</div>
+          <div style="font-size:10px;color:var(--text3);text-align:center;font-family:var(--mono)">Analytics &amp; FHIR data</div>
+        </a>
+        <a href="/vitals" style="text-decoration:none;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='rgba(52,211,153,.3)';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='var(--border)';this.style.transform='translateY(0)'">
+          <div style="width:36px;height:36px;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.2);border-radius:9px;display:flex;align-items:center;justify-content:center;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ok)" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          </div>
+          <div style="font-family:var(--display);font-size:12px;font-weight:700;color:var(--text)">Live Vitals</div>
+          <div style="font-size:10px;color:var(--text3);text-align:center;font-family:var(--mono)">Real-time monitor</div>
+          <span style="font-size:9px;padding:1px 7px;border-radius:20px;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.2);color:var(--ok);font-family:var(--mono);">● Live</span>
+        </a>
+        <a href="/fhir-agent" style="text-decoration:none;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='rgba(110,231,183,.3)';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='var(--border)';this.style.transform='translateY(0)'">
+          <div style="width:36px;height:36px;background:rgba(110,231,183,.08);border:1px solid rgba(110,231,183,.2);border-radius:9px;display:flex;align-items:center;justify-content:center;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6ee7b7" stroke-width="2"><ellipse cx="12" cy="12" rx="10" ry="4"/><path d="M2 12c0 2.21 4.48 4 10 4s10-1.79 10-4"/><path d="M2 12v5c0 2.21 4.48 4 10 4s10-1.79 10-4v-5"/></svg>
+          </div>
+          <div style="font-family:var(--display);font-size:12px;font-weight:700;color:var(--text)">FHIR Server</div>
+          <div style="font-size:10px;color:var(--text3);text-align:center;font-family:var(--mono)">FHIR Agent</div>
+          <span style="font-size:9px;padding:1px 7px;border-radius:20px;background:rgba(110,231,183,.08);border:1px solid rgba(110,231,183,.2);color:#6ee7b7;font-family:var(--mono);">New</span>
+        </a>
+        <a href="/agent-builder" style="text-decoration:none;background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.15);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='rgba(167,139,250,.35)';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='rgba(167,139,250,.15)';this.style.transform='translateY(0)'">
+          <div style="width:36px;height:36px;background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.25);border-radius:9px;display:flex;align-items:center;justify-content:center;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+          </div>
+          <div style="font-family:var(--display);font-size:12px;font-weight:700;color:var(--text)">Agent Builder</div>
+          <div style="font-size:10px;color:var(--text3);text-align:center;font-family:var(--mono)">Build custom agents</div>
+          <span style="font-size:9px;padding:1px 7px;border-radius:20px;background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.2);color:#a78bfa;font-family:var(--mono);">New</span>
+        </a>
+      </div>
+
+      <div class="qs-grid">
+        <div class="qs" onclick="sq('Hello, I need help with my symptoms')">
+          <div class="qs-agent" style="color:var(--triage)">Triage Agent</div>
+          <div class="qs-text">Start a new symptom assessment</div>
+        </div>
+        <div class="qs" onclick="sq('My patient ID is demo-002')">
+          <div class="qs-agent" style="color:var(--triage)">Triage Agent</div>
+          <div class="qs-text">Load James Chen — CAD + Warfarin risk</div>
+        </div>
+        <div class="qs" onclick="sq('Tell me about my diabetes complications and what specialist I need')">
+          <div class="qs-agent" style="color:var(--specialist)">Specialist Agent</div>
+          <div class="qs-text">Deep condition analysis + referrals</div>
+        </div>
+        <div class="qs" onclick="sq('Can I take ibuprofen with my current medications?')">
+          <div class="qs-agent" style="color:var(--pharmacy)">Pharmacy Agent</div>
+          <div class="qs-text">Drug interaction safety check</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Input -->
+  <div class="input-area">
+    <div class="suggestions">
+      <div class="sug" onclick="openPicker()" style="background:var(--adim);border-color:var(--border2);color:var(--accent);font-weight:700;">👥 Browse Patients</div>
+      <div class="sug" onclick="sq('I have chest pain and shortness of breath')">🚨 Chest pain</div>
+      <div class="sug" onclick="sq('What specialist should I see?')">👨‍⚕️ Referral</div>
+      <div class="sug" onclick="sq('Check all my medication interactions')">💊 Drug check</div>
+      <div class="sug" onclick="sq('My patient ID is demo-003')">🚨 demo-003 · HFrEF</div>
+      <div class="sug" onclick="sq('My patient ID is pt-010')">pt-010 · Complex</div>
+    </div>
+    <div class="input-wrap">
+      <textarea class="inp" id="inp" placeholder="Describe symptoms, ask about conditions, or check medications..." rows="1"
+        onkeydown="hk(event)" oninput="ar(this)"></textarea>
+      <button class="mic" id="micBtn" onclick="toggleMic()" title="🎤 Voice input"><svg viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M19 10a7 7 0 0 1-14 0"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></button>
+      <button class="send" id="sendBtn" onclick="send()">
+        <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </div>
+    <div class="inp-foot">
+      <div class="inp-hint" id="inpHint">Enter · Shift+Enter new line · 🎤 mic for voice</div>
+      <div style="display:flex;align-items:center;gap:7px;">
+        <div class="lang-badge" id="langBadge"><div class="lang-dot"></div><span id="langTxt">EN</span></div>
+        <div class="route-hint" id="routeHint">Orchestrator routes automatically</div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ═══════════════ PATIENT PICKER ═══════════════ -->
+<div class="picker-overlay" id="pickerOverlay" onclick="closePicker(event)">
+  <div class="picker-modal">
+    <div class="picker-hdr">
+      <div>
+        <div class="picker-title">Select Patient</div>
+        <div class="picker-sub" id="pickerSubtitle">Loading from FHIR server...</div>
+      </div>
+      <button class="picker-close" onclick="closePicker()">✕</button>
+    </div>
+    <div class="picker-search">
+      <div class="picker-search-wrap">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input class="picker-search-inp" id="pickerSearch" placeholder="Search by name or ID..." oninput="filterPicker(this.value)"/>
+      </div>
+    </div>
+    <div class="picker-body" id="pickerBody">
+      <div class="picker-loading"><div class="picker-spin"></div>Loading patients from FHIR server...</div>
+    </div>
+    <div class="picker-footer">
+      <div class="picker-count" id="pickerFooterCount">—</div>
+      <button class="picker-btn" onclick="loadPickerPatients()">
+        <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        Refresh
+      </button>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+const API = 'http://localhost:8000';
+let sid=null, loading=false, turns=0, fwc=0;
+const acc={TRIAGE:0,SPECIALIST:0,PHARMACY:0};
+
+const AGENTS={
+  TRIAGE:{cls:'triage',lbl:'Triage Agent',svg:'<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>'},
+  SPECIALIST:{cls:'specialist',lbl:'Specialist Agent',svg:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'},
+  PHARMACY:{cls:'pharmacy',lbl:'Pharmacy Agent',svg:'<path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/>'}
+};
+
+// URL patient auto-load
+(()=>{
+  const p=new URLSearchParams(location.search).get('patient');
+  if(p) setTimeout(()=>sq(`Hello, my patient ID is ${p}`),800);
+})();
+
+function setAgent(a){
+  const cfg=AGENTS[a]||AGENTS.TRIAGE;
+  acc[a]=(acc[a]||0)+1;
+  document.getElementById(`cnt-${cfg.cls}`).textContent=acc[a];
+  const b=document.getElementById('agBadge');
+  b.className=`agent-badge ${cfg.cls}`;
+  b.querySelector('svg').innerHTML=cfg.svg;
+  document.getElementById('agTxt').textContent=cfg.lbl;
+  ['triage','specialist','pharmacy'].forEach(x=>{
+    document.getElementById(`row-${x}`).classList.remove('on');
+    document.getElementById(`pip-${x}`).classList.remove('pulse');
+    document.getElementById(`nm-${x}`).classList.remove('on');
+  });
+  document.getElementById(`row-${cfg.cls}`).classList.add('on');
+  document.getElementById(`pip-${cfg.cls}`).classList.add('pulse');
+  document.getElementById(`nm-${cfg.cls}`).classList.add('on');
+  document.getElementById('routeHint').textContent=`→ Routed to ${cfg.lbl}`;
+}
+
+function newSession(){
+  sid=null;turns=0;fwc=0;
+  Object.keys(acc).forEach(k=>acc[k]=0);
+  ['triage','specialist','pharmacy'].forEach(x=>{
+    document.getElementById(`cnt-${x}`).textContent='0';
+    document.getElementById(`row-${x}`).classList.remove('on');
+    document.getElementById(`pip-${x}`).classList.remove('pulse');
+    document.getElementById(`nm-${x}`).classList.remove('on');
+  });
+  document.getElementById('sessTag').textContent='No Session';
+  document.getElementById('ptCard').classList.add('gone');
+  document.getElementById('urgBadge').classList.add('gone');
+  document.getElementById('fhirLog').classList.add('gone');
+  document.getElementById('statsGrid').style.display='none';
+  document.getElementById('flItems').innerHTML='';
+  document.getElementById('svTurn').textContent='0';
+  document.getElementById('svFhir').textContent='0';
+  document.getElementById('routeHint').textContent='Orchestrator routes automatically';
+  document.getElementById('agBadge').className='agent-badge triage';
+  document.getElementById('agTxt').textContent='Orchestrator Ready';
+  document.getElementById('agBadge').querySelector('svg').innerHTML='<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>';
+  clearSavedSession();
+  document.getElementById('msgs').innerHTML=`<div class="welcome" id="welcomeScreen">
+    <div style="display:flex;align-items:center;gap:16px;justify-content:center;padding-bottom:4px;overflow:visible;">
+      <div class="w-icon" style="flex-shrink:0;"><svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
+      <div style="text-align:left;">
+        <div class="w-title" style="text-align:left;overflow:visible;padding-bottom:3px;">FHIR AGENTS</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:1px;margin-top:2px;">v2.0 · MULTI-AGENT · FHIR R4</div>
+      </div>
+    </div>
+    <div class="w-desc">A multi-agent clinical intelligence platform. The Orchestrator automatically routes each message to the right specialist agent.</div>
+    <div class="w-chips">
+      <div class="w-chip triage"><div class="w-chip-dot"></div>Triage Agent</div>
+      <div class="w-chip specialist"><div class="w-chip-dot"></div>Specialist Agent</div>
+      <div class="w-chip pharmacy"><div class="w-chip-dot"></div>Pharmacy Agent</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;width:100%;max-width:780px;">
+      <a href="/dashboard" style="text-decoration:none;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='var(--border2)';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='var(--border)';this.style.transform='translateY(0)'">
+        <div style="width:36px;height:36px;background:var(--adim);border:1px solid var(--border2);border-radius:9px;display:flex;align-items:center;justify-content:center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></div>
+        <div style="font-family:var(--display);font-size:12px;font-weight:700;color:var(--text)">Dashboard</div>
+        <div style="font-size:10px;color:var(--text3);text-align:center;font-family:var(--mono)">Analytics &amp; FHIR data</div>
+      </a>
+      <a href="/vitals" style="text-decoration:none;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='rgba(52,211,153,.3)';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='var(--border)';this.style.transform='translateY(0)'">
+        <div style="width:36px;height:36px;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.2);border-radius:9px;display:flex;align-items:center;justify-content:center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ok)" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+        <div style="font-family:var(--display);font-size:12px;font-weight:700;color:var(--text)">Live Vitals</div>
+        <div style="font-size:10px;color:var(--text3);text-align:center;font-family:var(--mono)">Real-time monitor</div>
+        <span style="font-size:9px;padding:1px 7px;border-radius:20px;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.2);color:var(--ok);font-family:var(--mono);">● Live</span>
+      </a>
+      <a href="/fhir-agent" style="text-decoration:none;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='rgba(110,231,183,.3)';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='var(--border)';this.style.transform='translateY(0)'">
+        <div style="width:36px;height:36px;background:rgba(110,231,183,.08);border:1px solid rgba(110,231,183,.2);border-radius:9px;display:flex;align-items:center;justify-content:center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6ee7b7" stroke-width="2"><ellipse cx="12" cy="12" rx="10" ry="4"/><path d="M2 12c0 2.21 4.48 4 10 4s10-1.79 10-4"/><path d="M2 12v5c0 2.21 4.48 4 10 4s10-1.79 10-4v-5"/></svg></div>
+        <div style="font-family:var(--display);font-size:12px;font-weight:700;color:var(--text)">FHIR Server</div>
+        <div style="font-size:10px;color:var(--text3);text-align:center;font-family:var(--mono)">FHIR Agent</div>
+        <span style="font-size:9px;padding:1px 7px;border-radius:20px;background:rgba(110,231,183,.08);border:1px solid rgba(110,231,183,.2);color:#6ee7b7;font-family:var(--mono);">New</span>
+      </a>
+      <a href="/agent-builder" style="text-decoration:none;background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.15);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='rgba(167,139,250,.35)';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='rgba(167,139,250,.15)';this.style.transform='translateY(0)'">
+        <div style="width:36px;height:36px;background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.25);border-radius:9px;display:flex;align-items:center;justify-content:center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M4.93 4.93a10 10 0 0 0 0 14.14"/></svg></div>
+        <div style="font-family:var(--display);font-size:12px;font-weight:700;color:var(--text)">Agent Builder</div>
+        <div style="font-size:10px;color:var(--text3);text-align:center;font-family:var(--mono)">Build custom agents</div>
+        <span style="font-size:9px;padding:1px 7px;border-radius:20px;background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.2);color:#a78bfa;font-family:var(--mono);">New</span>
+      </a>
+    </div>
+    <div class="qs-grid">
+      <div class="qs" onclick="sq('Hello, I need help with my symptoms')"><div class="qs-agent" style="color:var(--triage)">Triage Agent</div><div class="qs-text">Start a new symptom assessment</div></div>
+      <div class="qs" onclick="sq('My patient ID is demo-002')"><div class="qs-agent" style="color:var(--triage)">Triage Agent</div><div class="qs-text">Load James Chen — CAD + Warfarin risk</div></div>
+      <div class="qs" onclick="sq('Tell me about my diabetes complications and what specialist I need')"><div class="qs-agent" style="color:var(--specialist)">Specialist Agent</div><div class="qs-text">Deep condition analysis + referrals</div></div>
+      <div class="qs" onclick="sq('Can I take ibuprofen with my current medications?')"><div class="qs-agent" style="color:var(--pharmacy)">Pharmacy Agent</div><div class="qs-text">Drug interaction safety check</div></div>
+    </div>
+  </div>`;
+}
+
+function sq(t){document.getElementById('inp').value=t;send();}
+function hw(){const w=document.getElementById('welcomeScreen');if(w)w.remove();}
+
+function addMsg(role,content,ak){
+  hw();
+  const cfg=AGENTS[ak]||AGENTS.TRIAGE;
+  const msgs=document.getElementById('msgs');
+  const g=document.createElement('div');
+  g.className='mg';
+  if(role==='ai'){
+    const l=document.createElement('div');
+    l.className=`ag-lbl ${cfg.cls}`;
+    l.innerHTML=`<div class="ag-lbl-pip" style="background:var(--${cfg.cls})"></div>${cfg.lbl}`;
+    g.appendChild(l);
+  }
+  const m=document.createElement('div');
+  m.className=`msg ${role}`;
+  const av=document.createElement('div');
+  av.className=`av ${role==='ai'?`ai ${cfg.cls}`:'user'}`;
+  av.innerHTML=`<svg viewBox="0 0 24 24">${role==='ai'?cfg.svg:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'}</svg>`;
+  const b=document.createElement('div');
+  b.className=`bub ${role==='ai'?`ai ${cfg.cls}`:'user'}`;
+  b.innerHTML=fmt(content);
+  m.appendChild(av);m.appendChild(b);g.appendChild(m);
+  msgs.appendChild(g);msgs.scrollTop=msgs.scrollHeight;
+  if(role==='ai')ctx(content);
+}
+
+function fmt(t){
+  return t
+    .replace(/According to \[([^\]]+)\] \(Relevance: ([\d.]+%)\)/g,
+      '<div class="citation"><strong>📚 $1</strong> · Relevance: $2</div>')
+    .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+    .replace(/`(.*?)`/g,'<code>$1</code>')
+    .replace(/HIGH RISK:/gi,'<span class="emg-t">⚠ HIGH RISK:</span>')
+    .replace(/ALLERGY CONFLICT:/gi,'<span class="emg-t">🚨 ALLERGY CONFLICT:</span>')
+    .replace(/CONTRAINDICATED/gi,'<span class="emg-t">CONTRAINDICATED</span>')
+    .replace(/\bEMERGENCY\b/g,'<span class="emg-t">🔴 EMERGENCY</span>')
+    .replace(/\bURGENT\b/g,'<span class="wrn-t">🟡 URGENT</span>')
+    .replace(/\bROUTINE\b/g,'<span class="ok-t">🟢 ROUTINE</span>')
+    .replace(/\n/g,'<br>');
+}
+
+function showTyping(){
+  hw();
+  const msgs=document.getElementById('msgs');
+  const d=document.createElement('div');
+  d.className='typing-wrap';d.id='typInd';
+  d.innerHTML=`<div class="av ai triage"><svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
+    <div class="typing-inner"><div class="typing-lbl">Orchestrator routing...</div>
+    <div class="typing-dots"><span></span><span></span><span></span></div></div>`;
+  msgs.appendChild(d);msgs.scrollTop=msgs.scrollHeight;
+}
+function hideTyping(){const t=document.getElementById('typInd');if(t)t.remove();}
+
+function toast(txt,type='fhir'){
+  const ex=document.querySelector('.toast');if(ex)ex.remove();
+  const icons={fhir:'<polyline points="20 6 9 17 4 12"/>',warn:'<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>'};
+  const t=document.createElement('div');
+  t.className=`toast ${type}`;
+  t.innerHTML=`<svg viewBox="0 0 24 24">${icons[type]||icons.fhir}</svg>${txt}`;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),3100);
+}
+
+function addFhir(txt){
+  fwc++;document.getElementById('svFhir').textContent=fwc;
+  document.getElementById('fhirLog').classList.remove('gone');
+  const i=document.createElement('div');i.className='fl-item';i.textContent=txt;
+  document.getElementById('flItems').prepend(i);
+}
+
+function ctx(text){
+  const lo=text.toLowerCase();
+  const ub=document.getElementById('urgBadge');
+  if(lo.includes('emergency')||lo.includes('call 911')){
+    ub.className='urg emg';document.getElementById('urgTxt').textContent='🔴 EMERGENCY';ub.classList.remove('gone');
+  } else if(lo.includes('urgent')||lo.includes('asap')){
+    ub.className='urg wrn';document.getElementById('urgTxt').textContent='🟡 URGENT';ub.classList.remove('gone');
+  } else if(lo.includes('routine')){
+    ub.className='urg ok';document.getElementById('urgTxt').textContent='🟢 ROUTINE';ub.classList.remove('gone');
+  }
+  // Detect FHIR writes — broad patterns to catch all agent response phrasings
+ if(lo.includes('observation created')||lo.includes('created an observation')||
+     lo.includes('triage observation')||lo.includes('fhir observation')||
+     lo.includes('symptom has been recorded')||lo.includes('observation has been')){
+    addFhir('Observation');toast('FHIR Observation written');
+  }
+  if(lo.includes('servicerequest created')||lo.includes('service request created')||
+     lo.includes('created a service request')||lo.includes('created an emergency service')||
+     lo.includes('created a referral')||lo.includes('referral has been created')||
+     lo.includes('service request has been')||lo.includes('created the service request')||
+     lo.includes('emergency service request')){
+    addFhir('ServiceRequest');toast('FHIR ServiceRequest written');
+  }
+  if(lo.includes('medicationrequest created')||lo.includes('medication request created')||
+     lo.includes('created a medication request')||lo.includes('prescription has been')){
+    addFhir('MedicationRequest');toast('FHIR MedicationRequest written');
+  }
+  if(lo.includes('high risk')||lo.includes('contraindicated')||lo.includes('allergy conflict')){toast('Drug safety alert detected','warn');}
+  const nm=text.match(/(?:Hello|Hi|Good\s+\w+),?\s+([A-Z][a-z]+(?:\s+[A-Z][a-z'-]+)?)/);
+  if(nm){
+    document.getElementById('ptName').textContent=nm[1];
+    document.getElementById('ptInit').textContent=nm[1].charAt(0);
+    document.getElementById('ptId').textContent='FHIR patient loaded';
+    document.getElementById('ptCard').classList.remove('gone');
+    document.getElementById('statsGrid').style.display='grid';
+  }
+}
+
+async function send(){
+  if(loading)return;
+  const inp=document.getElementById('inp');
+  const txt=inp.value.trim();if(!txt)return;
+  inp.value='';ar(inp);
+  loading=true;document.getElementById('sendBtn').disabled=true;
+  turns++;document.getElementById('svTurn').textContent=turns;
+  document.getElementById('statsGrid').style.display='grid';
+  addMsg('user',txt,'TRIAGE');showTyping();
+  try{
+    const body={message:txt};if(sid)body.session_id=sid;
+    const res=await fetch(`${API}/chat`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const data=await res.json();
+    hideTyping();
+    if(!sid&&data.session_id){sid=data.session_id;document.getElementById('sessTag').textContent=`#${sid.substring(0,6)}`;}
+    const ag=(data.agent_used||'TRIAGE').toUpperCase();
+    setAgent(ag);
+    if(data.response)addMsg('ai',data.response,ag);
+    else if(data.detail)addMsg('ai',`Error: ${data.detail}`,'TRIAGE');
+  }catch(e){
+    hideTyping();
+    addMsg('ai','Could not connect to API at `http://localhost:8000`. Make sure the backend is running.','TRIAGE');
+  }
+  loading=false;document.getElementById('sendBtn').disabled=false;inp.focus();
+  saveSession();
+}
+
+function hk(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}}
+function ar(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,110)+'px';}
+
+// Theme
+
+// ── Session Persistence — localStorage ──────────────────────────────────────
+// Saves and restores chat session state across page navigation.
+// Judges can switch to Dashboard/Vitals and return without losing the conversation.
+
+const SESSION_KEY = 'fhir-agents-session';
+
+function saveSession() {
+  try {
+    const msgs = document.getElementById('msgs');
+    const state = {
+      sid,
+      turns,
+      fwc,
+      acc: {...acc},
+      sessTag: document.getElementById('sessTag').textContent,
+      msgsHTML: msgs ? msgs.innerHTML : '',
+      ptName: document.getElementById('ptName')?.textContent || '',
+      ptId: document.getElementById('ptId')?.textContent || '',
+      ptInit: document.getElementById('ptInit')?.textContent || '?',
+      ptCardVisible: !document.getElementById('ptCard')?.classList.contains('gone'),
+      statsVisible: document.getElementById('statsGrid')?.style.display !== 'none',
+      svTurn: document.getElementById('svTurn')?.textContent || '0',
+      svFhir: document.getElementById('svFhir')?.textContent || '0',
+      urgClass: document.getElementById('urgBadge')?.className || '',
+      urgTxt: document.getElementById('urgTxt')?.textContent || '',
+      urgVisible: !document.getElementById('urgBadge')?.classList.contains('gone'),
+      fhirLogVisible: !document.getElementById('fhirLog')?.classList.contains('gone'),
+      flItems: document.getElementById('flItems')?.innerHTML || '',
+      agBadgeClass: document.getElementById('agBadge')?.className || '',
+      agTxt: document.getElementById('agTxt')?.textContent || '',
+      routeHint: document.getElementById('routeHint')?.textContent || '',
+      cntTriage: document.getElementById('cnt-triage')?.textContent || '0',
+      cntSpecialist: document.getElementById('cnt-specialist')?.textContent || '0',
+      cntPharmacy: document.getElementById('cnt-pharmacy')?.textContent || '0',
+      savedAt: Date.now(),
+    };
+    localStorage.setItem(SESSION_KEY, JSON.stringify(state));
+  } catch(e) {
+    console.warn('Session save error:', e);
+  }
+}
+
+function restoreSession() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return false;
+    const state = JSON.parse(raw);
+
+    // Don't restore sessions older than 2 hours
+    if (Date.now() - state.savedAt > 2 * 60 * 60 * 1000) {
+      localStorage.removeItem(SESSION_KEY);
+      return false;
+    }
+
+    // Don't restore if it's just the welcome screen
+    if (!state.sid) return false;
+
+    // Restore session variables
+    sid   = state.sid;
+    turns = state.turns || 0;
+    fwc   = state.fwc   || 0;
+    if (state.acc) Object.assign(acc, state.acc);
+
+    // Restore header
+    const sessTag = document.getElementById('sessTag');
+    if (sessTag && state.sessTag) sessTag.textContent = state.sessTag;
+
+    // Restore messages
+    const msgs = document.getElementById('msgs');
+    if (msgs && state.msgsHTML) msgs.innerHTML = state.msgsHTML;
+
+    // Restore patient card
+    if (state.ptCardVisible) {
+      const ptCard = document.getElementById('ptCard');
+      if (ptCard) ptCard.classList.remove('gone');
+      const ptName = document.getElementById('ptName');
+      if (ptName && state.ptName) ptName.textContent = state.ptName;
+      const ptId = document.getElementById('ptId');
+      if (ptId && state.ptId) ptId.textContent = state.ptId;
+      const ptInit = document.getElementById('ptInit');
+      if (ptInit && state.ptInit) ptInit.textContent = state.ptInit;
+    }
+
+    // Restore stats
+    if (state.statsVisible) {
+      const sg = document.getElementById('statsGrid');
+      if (sg) sg.style.display = 'grid';
+      const svt = document.getElementById('svTurn');
+      if (svt) svt.textContent = state.svTurn;
+      const svf = document.getElementById('svFhir');
+      if (svf) svf.textContent = state.svFhir;
+    }
+
+    // Restore urgency badge
+    if (state.urgVisible) {
+      const ub = document.getElementById('urgBadge');
+      if (ub) { ub.className = state.urgClass; document.getElementById('urgTxt').textContent = state.urgTxt; }
+    }
+
+    // Restore FHIR log
+    if (state.fhirLogVisible) {
+      const fl = document.getElementById('fhirLog');
+      if (fl) fl.classList.remove('gone');
+      const fli = document.getElementById('flItems');
+      if (fli) fli.innerHTML = state.flItems;
+    }
+
+    // Restore agent badge
+    const ab = document.getElementById('agBadge');
+    if (ab && state.agBadgeClass) ab.className = state.agBadgeClass;
+    const at = document.getElementById('agTxt');
+    if (at && state.agTxt) at.textContent = state.agTxt;
+    const rh = document.getElementById('routeHint');
+    if (rh && state.routeHint) rh.textContent = state.routeHint;
+
+    // Restore agent counters
+    const ct = document.getElementById('cnt-triage');
+    if (ct) ct.textContent = state.cntTriage;
+    const cs = document.getElementById('cnt-specialist');
+    if (cs) cs.textContent = state.cntSpecialist;
+    const cp = document.getElementById('cnt-pharmacy');
+    if (cp) cp.textContent = state.cntPharmacy;
+
+    // Scroll messages to bottom
+    if (msgs) msgs.scrollTop = msgs.scrollHeight;
+
+    console.log('Session restored:', state.sid?.substring(0,8));
+    return true;
+  } catch(e) {
+    console.warn('Session restore error:', e);
+    return false;
+  }
+}
+
+function clearSavedSession() {
+  localStorage.removeItem(SESSION_KEY);
+}
+
+const TH=[{key:'dark',i:'🌙',l:'Dark'},{key:'light',i:'☀️',l:'Light'},{key:'clinical',i:'🏥',l:'Clinical'}];
+let ti=0;
+function cycleTheme(){
+  ti=(ti+1)%TH.length;
+  const t=TH[ti];
+  document.documentElement.setAttribute('data-theme',t.key);
+  document.getElementById('themeBtn').textContent=`${t.i} ${t.l}`;
+  localStorage.setItem('fhir-theme',ti);
+}
+
+
+const st=localStorage.getItem('fhir-theme');
+if(st!==null){ti=parseInt(st);const t=TH[ti];document.documentElement.setAttribute('data-theme',t.key);document.getElementById('themeBtn').textContent=`${t.i} ${t.l}`;}
+
+// ── Voice Input (Web Speech API) ────────────────────────────────────────────
+(function() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let rec = null;
+  let on  = false;
+
+  function hint(txt, isVoice) {
+    const el = document.getElementById('inpHint');
+    if (!el) return;
+    el.innerHTML = isVoice ? `<span class="voice-hint">${txt}</span>` : txt;
+  }
+
+  function stopMic() {
+    on = false;
+    const btn = document.getElementById('micBtn');
+    if (btn) btn.classList.remove('listening');
+    hint('Enter · Shift+Enter new line · 🎤 mic for voice', false);
+  }
+
+  function initMic() {
+    rec = new SR();
+    window._recognition = rec;
+    rec.lang = 'en-US';
+    rec.interimResults = true;
+    rec.continuous = false;
+    rec.maxAlternatives = 1;
+
+    rec.onstart = () => {
+      on = true;
+      const btn = document.getElementById('micBtn');
+      if (btn) btn.classList.add('listening');
+      hint('🎤 Listening... speak now', true);
+    };
+
+    rec.onresult = (e) => {
+      const inp = document.getElementById('inp');
+      let t = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) t += e.results[i][0].transcript;
+      inp.value = t;
+      ar(inp);
+      if (e.results[e.results.length - 1].isFinal) {
+        hint('✓ Got it — sending...', true);
+        setTimeout(() => { send(); stopMic(); }, 700);
+      }
+    };
+
+    rec.onerror = (e) => {
+      stopMic();
+      const msgs = {
+        'no-speech':     'No speech detected — try again',
+        'audio-capture': 'Microphone not found',
+        'not-allowed':   'Mic blocked — allow access in browser settings',
+        'network':       'Network error during recognition',
+      };
+      hint(msgs[e.error] || `Voice error: ${e.error}`, true);
+    };
+
+    rec.onend = () => { if (on) stopMic(); };
+  }
+
+  window.toggleMic = function() {
+    if (!SR) {
+      toast('Voice input requires Chrome or Edge browser.', 'warn');
+      return;
+    }
+    if (!rec) initMic();
+    if (on) { rec.stop(); stopMic(); }
+    else    { document.getElementById('inp').value = ''; rec.start(); }
+  };
+
+  // Mark button unsupported if API unavailable
+  document.addEventListener('DOMContentLoaded', () => {
+    if (!SR) {
+      const btn = document.getElementById('micBtn');
+      if (btn) { btn.classList.add('unsupported'); btn.title = 'Voice not supported — use Chrome/Edge'; }
+    }
+  });
+  // Initialise mic on page load
+  initMic();
+})();
+
+
+// ── Custom Agents — load into sidebar agent network ──────────────────────────
+async function loadCustomAgents() {
+  try {
+    const r = await fetch('http://localhost:8000/agents');
+    const d = await r.json();
+    const agents = d.agents || [];
+    const roster = document.getElementById('customAgentRoster');
+    if (!roster) return;
+    if (agents.length === 0) { roster.innerHTML = ''; return; }
+    roster.innerHTML = agents.map(a => `
+      <div class="a-row" id="row-${a.id}">
+        <div class="a-pip" id="pip-${a.id}" style="background:${a.color||'#a78bfa'}"></div>
+        <div class="a-info">
+          <div class="a-name" id="nm-${a.id}">${a.icon||'🤖'} ${a.name}</div>
+          <div class="a-desc">${a.specialty||'Custom'} · Custom Agent</div>
+        </div>
+        <div class="a-cnt" id="cnt-${a.id}">0</div>
+      </div>`).join('');
+    // Add custom agents to the AGENTS map for routing display
+    agents.forEach(a => {
+      const key = a.name.toUpperCase().replace(/\s+/g, '_');
+      AGENTS[key] = {
+        cls: a.id,
+        lbl: a.name,
+        svg: '<circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M4.93 4.93a10 10 0 0 0 0 14.14"/>',
+        color: a.color || '#a78bfa',
+        custom: true,
+      };
+    });
+  } catch(e) { /* API not yet running */ }
+}
+
+// Override setAgent to handle custom agents
+const _origSetAgent = setAgent;
+window.setAgent = function(a) {
+  // Try built-in first
+  if (AGENTS[a]) {
+    const cfg = AGENTS[a];
+    if (cfg.custom) {
+      // Custom agent display
+      acc[a] = (acc[a] || 0) + 1;
+      const cntEl = document.getElementById(`cnt-${cfg.cls}`);
+      if (cntEl) cntEl.textContent = acc[a];
+      const badge = document.getElementById('agBadge');
+      badge.style.background = cfg.color + '22';
+      badge.style.borderColor = cfg.color + '55';
+      badge.style.color = cfg.color;
+      badge.querySelector('svg').innerHTML = cfg.svg;
+      document.getElementById('agTxt').textContent = cfg.lbl;
+      // Pulse the custom agent row
+      const row = document.getElementById(`row-${cfg.cls}`);
+      const pip = document.getElementById(`pip-${cfg.cls}`);
+      const nm  = document.getElementById(`nm-${cfg.cls}`);
+      if (row) { row.classList.add('on'); pip.classList.add('pulse'); if(nm) nm.classList.add('on'); }
+      setTimeout(() => { if(row){ row.classList.remove('on'); pip.classList.remove('pulse'); if(nm) nm.classList.remove('on'); } }, 2000);
+      document.getElementById('routeHint').textContent = `→ Routed to ${cfg.lbl}`;
+      return;
+    }
+  }
+  _origSetAgent(a);
+};
+
+// Restore previous session if available
+document.addEventListener('DOMContentLoaded', () => {
+  const restored = restoreSession();
+  if (!restored) {
+    // No saved session — show welcome screen (already default)
+    console.log('No saved session — showing welcome screen');
+  }
+});
+
+// Load custom agents on page load
+loadCustomAgents();
+
+// ── Language Detection ───────────────────────────────────────────────────────
+// Detects language of typed/spoken message and updates the badge.
+// Also sets the voice recognition language to match.
+const LANG_MAP = {
+  "yo tengo":"es","tengo":"es","dolor":"es","ayuda":"es","me duele":"es",
+  "enfermedad":"es","medicamento":"es","médico":"es","hospital":"es",
+  "pastilla":"es","sangre":"es","corazón":"es","pecho":"es","respirar":"es",
+  "je suis":"fr","j'ai":"fr","douleur":"fr","aide":"fr","malade":"fr",
+  "médicament":"fr","médecin":"fr","hôpital":"fr","poitrine":"fr","respirer":"fr",
+  "我有":"zh","疼痛":"zh","帮助":"zh","医院":"zh","药":"zh","医生":"zh",
+  "胸痛":"zh","呼吸":"zh","心脏":"zh","血":"zh",
+};
+
+const LANG_NAMES = { en:"EN", es:"ES · Español", fr:"FR · Français", zh:"ZH · 中文" };
+const VOICE_LANGS = { en:"en-US", es:"es-US", fr:"fr-FR", zh:"zh-CN" };
+
+let detectedLang = 'en';
+
+function detectLanguage(text) {
+  const lo = text.toLowerCase();
+  // Check for Chinese characters
+  if (/[一-鿿]/.test(text)) return 'zh';
+  for (const [kw, lang] of Object.entries(LANG_MAP)) {
+    if (lo.includes(kw)) return lang;
+  }
+  return 'en';
+}
+
+function updateLangBadge(lang) {
+  detectedLang = lang;
+  const badge = document.getElementById('langBadge');
+  const txt   = document.getElementById('langTxt');
+  if (!badge || !txt) return;
+  txt.textContent = LANG_NAMES[lang] || lang.toUpperCase();
+  badge.classList.toggle('active', lang !== 'en');
+  // Update voice recognition language
+  if (window._recognition) {
+    window._recognition.lang = VOICE_LANGS[lang] || 'en-US';
+  }
+}
+
+// Hook into the send function — detect language before sending
+// Re-detects on EVERY message so switching back to English resets correctly
+const _origSend = window.send;
+window.send = async function() {
+  const txt = document.getElementById('inp').value.trim();
+  if (txt) {
+    const lang = detectLanguage(txt);
+    updateLangBadge(lang);
+    if (window._recognition) {
+      const VOICE_LANGS = { en:'en-US', es:'es-US', fr:'fr-FR', zh:'zh-CN' };
+      window._recognition.lang = VOICE_LANGS[lang] || 'en-US';
+    }
+  }
+  return _origSend.apply(this, arguments);
+};
+
+// Also detect as user types
+document.addEventListener('DOMContentLoaded', () => {
+  const inp = document.getElementById('inp');
+  if (inp) {
+    inp.addEventListener('input', () => {
+      if (inp.value.length > 8) updateLangBadge(detectLanguage(inp.value));
+    });
+  }
+});
+
+// ── Patient Picker ───────────────────────────────────────────────────────────
+const PATIENT_HINTS = {
+  'pt-003':   'HFrEF · Digoxin · K⁺ low — dangerous combination',
+  'pt-005':   'T2DM · SGLT2 inhibitor · Diabetic retinopathy',
+  'pt-010':   'HFrEF + T2DM + CKD + HTN · 7 medications · Most complex',
+  'demo-001': 'T2DM · Hypertension · Hypothyroidism · HbA1c 8.2%',
+  'demo-002': 'CAD · AFib · Warfarin + Aspirin · INR 1.6 sub-therapeutic',
+  'demo-003': 'HFrEF · CKD · BNP 845 · Weight +4kg — decompensated HF',
+  'demo-004': 'Severe Asthma · NSAID allergy · Latex allergy',
+  'demo-005': 'CKD Stage 4 · T2DM · eGFR 22 — dialysis planning',
+  'demo-006': 'Post-stroke · Warfarin · INR 1.4 sub-therapeutic',
+  'demo-007': 'Prostate cancer · ADT-induced osteoporosis · Rising PSA',
+  'demo-008': 'T1DM · Insulin pump · HbA1c 9.4% · Retinopathy',
+  'demo-009': 'HFpEF + T2DM + HTN + CKD · BP 162 uncontrolled',
+};
+
+let allPickerPatients = [];
+
+async function loadPickerPatients() {
+  document.getElementById('pickerBody').innerHTML =
+    '<div class="picker-loading"><div class="picker-spin"></div>Loading patients from FHIR server...</div>';
+  try {
+    const r = await fetch('http://localhost:8000/analytics/patients');
+    const d = await r.json();
+    allPickerPatients = d.patients || [];
+    // Sort by ID for consistent ordering
+    allPickerPatients.sort((a, b) => a.id.localeCompare(b.id));
+    renderPickerGrid(allPickerPatients);
+    // Update count badge on welcome screen
+    const badge = document.getElementById('pickerPatientCount');
+    if (badge) badge.textContent = allPickerPatients.length + ' patients';
+    document.getElementById('pickerSubtitle').textContent =
+      allPickerPatients.length + ' patients loaded from FHIR server';
+    document.getElementById('pickerFooterCount').textContent =
+      allPickerPatients.length + ' patients on FHIR server';
+  } catch(e) {
+    document.getElementById('pickerBody').innerHTML =
+      '<div class="picker-empty">Could not load patients.<br>Make sure the API is running at localhost:8000</div>';
+  }
+}
+
+function calcAge(dob) {
+  if (!dob) return '—';
+  return Math.floor((new Date() - new Date(dob)) / 31557600000) + 'y';
+}
+
+function renderPickerGrid(patients) {
+  const body = document.getElementById('pickerBody');
+  if (!patients.length) {
+    body.innerHTML = '<div class="picker-empty">No patients found</div>';
+    return;
+  }
+  body.innerHTML = '<div class="picker-grid" id="pickerGrid"></div>';
+  const grid = document.getElementById('pickerGrid');
+  patients.forEach(p => {
+    const name = p.name || 'Unknown';
+    const initial = name.charAt(0).toUpperCase();
+    const age = calcAge(p.birthDate);
+    const gender = (p.gender || '').toLowerCase();
+    const hint = PATIENT_HINTS[p.id] || 'Click to start triage session';
+    const avCls = gender === 'female' ? 'f' : 'm';
+    const gCls  = gender === 'female' ? 'gender-f' : 'gender-m';
+    const gLbl  = gender === 'female' ? '♀ Female' : '♂ Male';
+
+    const card = document.createElement('div');
+    card.className = 'pcard';
+    card.innerHTML = `
+      <div class="pcard-head">
+        <div class="pcard-av ${avCls}">${initial}</div>
+        <div>
+          <div class="pcard-name">${name}</div>
+          <div class="pcard-id">${p.id}</div>
+        </div>
+      </div>
+      <div class="pcard-meta">
+        <span class="pmeta-tag age">${age}</span>
+        <span class="pmeta-tag ${gCls}">${gLbl}</span>
+      </div>
+      <div class="pcard-hint">${hint}</div>`;
+    card.onclick = () => selectPickerPatient(p.id, name);
+    grid.appendChild(card);
+  });
+}
+
+function filterPicker(q) {
+  const lo = q.toLowerCase();
+  const filtered = allPickerPatients.filter(p =>
+    (p.name || '').toLowerCase().includes(lo) ||
+    (p.id   || '').toLowerCase().includes(lo)
+  );
+  renderPickerGrid(filtered);
+  document.getElementById('pickerFooterCount').textContent =
+    filtered.length + ' of ' + allPickerPatients.length + ' patients';
+}
+
+function selectPickerPatient(id, name) {
+  closePicker();
+  // Small delay so modal closes before message sends
+  setTimeout(() => sq(`My patient ID is ${id}`), 150);
+}
+
+function openPicker() {
+  document.getElementById('pickerOverlay').classList.add('open');
+  document.getElementById('pickerSearch').value = '';
+  if (!allPickerPatients.length) loadPickerPatients();
+  else renderPickerGrid(allPickerPatients);
+  // Focus search after animation
+  setTimeout(() => document.getElementById('pickerSearch').focus(), 250);
+}
+
+function closePicker(e) {
+  if (e && e.target !== document.getElementById('pickerOverlay')) return;
+  document.getElementById('pickerOverlay').classList.remove('open');
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.getElementById('pickerOverlay').classList.remove('open');
+});
+
+// Pre-load patient count on page load for the badge
+fetch('http://localhost:8000/analytics/patients')
+  .then(r => r.json())
+  .then(d => {
+    allPickerPatients = (d.patients || []).sort((a,b) => a.id.localeCompare(b.id));
+    const badge = document.getElementById('pickerPatientCount');
+    if (badge) badge.textContent = allPickerPatients.length + ' patients';
+  })
+  .catch(() => {
+    const badge = document.getElementById('pickerPatientCount');
+    if (badge) badge.textContent = 'offline';
+  });
+</script>
+</body>
+</html>

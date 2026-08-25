@@ -1,0 +1,6 @@
+.DS_Store
+.dev.md
+**/__pycache__/
+.env
+data/custom_agents.json
+CLAUDE.md

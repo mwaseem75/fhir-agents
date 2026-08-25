@@ -1,0 +1,116 @@
+services:
+  # Bundled FHIR R4 server for local dev/demo — open-source HAPI FHIR, no
+  # license required. Swap FHIR_BASE_URL below to point at any other FHIR R4
+  # server instead (IRIS for Health, Firely, a cloud FHIR service, etc.).
+  hapi-fhir:
+    image: hapiproject/hapi:latest
+    restart: always
+    container_name: fhir-agents-hapi
+    ports:
+      - "8080:8080"
+    environment:
+      - hapi.fhir.fhir_version=R4
+    volumes:
+      - hapi-data:/data/hapi
+    networks:
+      - fhir-agents-network
+    # No healthcheck here: this image is distroless (no shell, no wget/curl,
+    # runs as a non-root UID with nothing but the JRE and the app itself), so
+    # a CMD-SHELL healthcheck can never execute inside it. Readiness is
+    # checked from the `seed` container instead, which does have curl+sh.
+
+  # One-shot loader: waits for HAPI FHIR to actually accept requests (polled
+  # from here since the hapi-fhir image itself has no shell/curl to
+  # healthcheck with), then POSTs data/fhir/demo_patients.json (a FHIR
+  # transaction Bundle of 20 synthetic patients + observations/conditions/
+  # meds/etc.) into it. Runs on every `up`, but the bundle uses
+  # PUT-with-client-ID entries so re-running it just re-applies the same
+  # resources (idempotent) rather than duplicating them.
+  seed:
+    image: curlimages/curl:8.10.1
+    container_name: fhir-agents-seed
+    depends_on:
+      hapi-fhir:
+        condition: service_started
+    volumes:
+      - ./data/fhir:/seed:ro
+    entrypoint:
+      - sh
+      - -c
+      - >
+        echo "Seed: waiting for HAPI FHIR to become ready..." &&
+        i=0;
+        until curl -sf http://hapi-fhir:8080/fhir/metadata -o /dev/null; do
+          i=$$((i+1));
+          if [ "$$i" -ge 60 ]; then echo "Seed: HAPI FHIR never became ready" && exit 1; fi;
+          sleep 2;
+        done &&
+        echo "Seed: loading demo patient bundle into HAPI FHIR..." &&
+        curl -sf -X POST http://hapi-fhir:8080/fhir
+        -H "Content-Type: application/fhir+json"
+        --data @/seed/demo_patients.json
+        -o /tmp/seed-response.json &&
+        echo "Seed: demo data loaded successfully." ||
+        (echo "Seed: FAILED to load demo data" && exit 1)
+    networks:
+      - fhir-agents-network
+
+  # Local embeddings server — runs the RAG guideline embedding model
+  # (nomic-embed-text, ~270MB) entirely on this machine, no API key needed.
+  # Chat completions still go to Groq's free cloud API (Groq doesn't serve
+  # embedding models), so this container only needs to be small and local.
+  ollama:
+    image: ollama/ollama:latest
+    restart: always
+    container_name: fhir-agents-ollama
+    volumes:
+      - ollama-data:/root/.ollama
+    networks:
+      - fhir-agents-network
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >
+        ollama serve &
+        until ollama list > /dev/null 2>&1; do sleep 1; done &&
+        ollama pull nomic-embed-text &&
+        wait
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list | grep -q nomic-embed-text || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: fhir-agents-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./src/python:/app
+      - ./data:/app/data
+    environment:
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - FHIR_BASE_URL=http://hapi-fhir:8080/fhir
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - PYTHONPATH=/app
+    depends_on:
+      hapi-fhir:
+        condition: service_started
+      seed:
+        condition: service_completed_successfully
+      ollama:
+        condition: service_healthy
+    command: uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload --app-dir /app
+    networks:
+      - fhir-agents-network
+
+volumes:
+  hapi-data:
+  ollama-data:
+
+networks:
+  fhir-agents-network:
+    driver: bridge
