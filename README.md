@@ -156,7 +156,7 @@ fhir-agents/
 ## Prerequisites
 
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running (or Docker Engine + Compose v2 on Linux)
-- A free [Groq API key](https://console.groq.com/keys) — sign in, click **API Keys → Create API Key**, no credit card required. The free tier gives every model on Groq's hardware, rate-limited to 30 requests/min and 6,000 tokens/min — plenty for exploring this app, but a chatty custom agent that makes many tool calls in a row can occasionally slow down against that token budget. Add a card later (still $0 minimum spend) if you want higher limits.
+- A free [Groq API key](https://console.groq.com/keys) — sign in, click **API Keys → Create API Key**, no credit card required. The free tier gives every model on Groq's hardware; the default model this app uses (`openai/gpt-oss-120b`) is capped at 8,000 tokens/minute and 1,000 requests/day. That's fine for exploring the app at a normal pace, but rapid back-to-back messages — or a chatty custom agent making several tool calls in a row — can burn through the per-minute budget and return a `429 rate_limit_exceeded`. It always says how many seconds to wait; retry after that and it clears. Add a card later (still $0 minimum spend) if you want higher limits.
 - Nothing else — the bundled HAPI FHIR server needs no license, and RAG embeddings run locally via a bundled Ollama container (also no key required)
 
 ---
@@ -448,7 +448,7 @@ Code in `src/python/` is bind-mounted into the `api` container with `uvicorn --r
 
 **`fhir-agents-seed` exits with an error** — HAPI FHIR probably wasn't ready in time (the seed job retries for up to 2 minutes before giving up) or the container was mid-restart. Check `docker logs fhir-agents-hapi` for startup errors, then `docker-compose up -d` again — the seed data is idempotent, so re-running it is always safe.
 
-**Custom agent responses are slow** — the platform's built-in RAG rule means every clinical agent tries `search_clinical_guidelines` before answering, and Groq's free tier caps at 6,000 tokens/minute. An agent that needs several tool-call rounds (or asks about a topic with no matching guideline, so it keeps retrying the search) can take 30–90 seconds on the free tier. This is a rate-limit tradeoff of the free tier, not a hang — it will complete.
+**Custom agent responses are slow, or you see `429 rate_limit_exceeded`** — the platform's built-in RAG rule means every clinical agent tries `search_clinical_guidelines` before answering, and Groq's free tier caps `openai/gpt-oss-120b` at 8,000 tokens/minute. An agent that needs several tool-call rounds (or asks about a topic with no matching guideline, so it keeps retrying the search), or several messages sent in quick succession, can burn through that per-minute budget. The error response always states how many seconds until it clears (usually under 20s) — wait that long and retry. This is a rate-limit tradeoff of the free tier, not a bug.
 
 **Port `8000` or `8080` already in use** — something else on your machine is bound to it. Either stop that process, or change the host-side port mapping in `docker-compose.yml` (e.g. `"8001:8000"`) and browse to the new port.
 

@@ -827,8 +827,9 @@ async function send(){
     if(data.response)addMsg('ai',data.response,ag);
     else if(data.detail)addMsg('ai',`Error: ${data.detail}`,'TRIAGE');
   }catch(e){
+    console.error('Triage chat request failed:',e);
     hideTyping();
-    addMsg('ai','Could not connect to API at `http://localhost:8000`. Make sure the backend is running.','TRIAGE');
+    addMsg('ai',`Could not reach the API: ${e.message}. Check the browser console and \`docker logs fhir-agents-api\` for details.`,'TRIAGE');
   }
   loading=false;document.getElementById('sendBtn').disabled=false;inp.focus();
   saveSession();

@@ -773,8 +773,9 @@ async function send() {
       loadCapability();
     }
   } catch(e) {
+    console.error('FHIR Agent chat request failed:',e);
     hideTyping();
-    addMsg('ai','Could not connect to API at `http://localhost:8000/fhir-agent/chat`. Check docker logs.');
+    addMsg('ai',`Could not reach the API: ${e.message}. Check the browser console and \`docker logs fhir-agents-api\` for details.`);
     document.getElementById('agentState').textContent='Error';
   }
   loading=false; document.getElementById('sendBtn').disabled=false; document.getElementById('inp').focus();
