@@ -45,7 +45,8 @@ llm = ChatOpenAI(
     model=LLM_MODEL,
     temperature=TEMP_ROUTER,
     api_key=GROQ_API_KEY,
-    base_url=GROQ_BASE_URL
+    base_url=GROQ_BASE_URL,
+    max_retries=5
 )
 
 # ── Router system prompt ──────────────────────────────────────────────────────

@@ -170,6 +170,7 @@ LANGUAGE RULE:
         temperature=float(config.get("temperature", 0.2)),
         api_key=GROQ_API_KEY,
         base_url=GROQ_BASE_URL,
+        max_retries=5,
     )
 
     agent = create_openai_tools_agent(llm, selected_tools, prompt)
